@@ -31,6 +31,9 @@ def generate_response(
         "think": False,
         "options": {
             "temperature": temperature,
+            "num_ctx": 2048,
+            "num_predict": 128,
+            "num_thread": 4,
         },
     }
     try:
@@ -91,6 +94,9 @@ def generate_json_response(
         "format": "json",
         "options": {
             "temperature": temperature,
+            "num_ctx": 2048,
+            "num_predict": 128,
+            "num_thread": 4,
         },
     }
 
