@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import Base, engine
 from app.api.documents import router as documents_router
 from app.routers.qa import router as qa_router
+from app.routers.agreement_generator import (
+    router as agreement_generator_router,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,6 +30,7 @@ app.add_middleware(
 
 app.include_router(documents_router)
 app.include_router(qa_router)
+app.include_router(agreement_generator_router)
 
 
 @app.get("/")

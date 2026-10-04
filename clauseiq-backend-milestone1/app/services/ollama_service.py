@@ -130,3 +130,67 @@ def generate_json_response(
         )
 
     return answer.strip()
+
+def generate_agreement_response(prompt: str) -> str:
+    """
+    Generate an agreement draft using the local Ollama model.
+    """
+
+    if not prompt or not prompt.strip():
+        raise ValueError("Prompt cannot be empty.")
+
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        "stream": False,
+        "think": False,
+        "options": {
+            "temperature": 0.2,
+            "num_ctx": 2048,
+            "num_predict": 700,
+            "num_thread": 4,
+        },
+    }
+
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json=payload,
+            timeout=OLLAMA_TIMEOUT,
+        )
+
+        response.raise_for_status()
+
+    except requests.Timeout as exc:
+        raise RuntimeError(
+            "Ollama took too long to generate the agreement. "
+            "The local model may be overloaded."
+        ) from exc
+
+    except requests.RequestException as exc:
+        raise RuntimeError(
+            f"Could not connect to Ollama at "
+            f"{settings.OLLAMA_URL}: {exc}"
+        ) from exc
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise RuntimeError(
+            "Ollama returned an invalid JSON response."
+        ) from exc
+
+    message = data.get("message", {})
+    answer = message.get("content", "")
+
+    if not answer:
+        raise ValueError(
+            "Ollama returned an empty agreement."
+        )
+
+    return answer.strip()

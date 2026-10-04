@@ -106,3 +106,43 @@ export async function askAgreement(
 
   return response.json();
 }
+
+export interface AgreementGenerationRequest {
+  agreement_type: string;
+  parties: string;
+  purpose: string;
+  location: string;
+  duration: string;
+  financial_terms: string;
+  additional_requirements: string;
+}
+
+export interface AgreementGenerationResponse {
+  agreement_type: string;
+  agreement: string;
+}
+
+export async function generateAgreement(
+  request: AgreementGenerationRequest
+): Promise<AgreementGenerationResponse> {
+  const response = await fetch(
+    `${API_URL}/agreements/generate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+
+    throw new Error(
+      error || "Agreement generation failed"
+    );
+  }
+
+  return response.json();
+}

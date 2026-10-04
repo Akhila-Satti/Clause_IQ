@@ -14,7 +14,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import type { Analysis, Clause, DocumentInfo, RiskLevel } from "./types";
-import { uploadDocument, getAnalysis, askAgreement, askAboutClause , getDocuments,} from "./api";
+import { uploadDocument, getAnalysis, askAgreement, askAboutClause , getDocuments, generateAgreement,} from "./api";
 
 type Page =
   | "dashboard"
@@ -727,6 +727,328 @@ function AskAgreementPage({
     </div>
   );
 }
+function ClauseAssistantPage() {
+  const [agreementType, setAgreementType] = useState("");
+  const [parties, setParties] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [location, setLocation] = useState("");
+  const [duration, setDuration] = useState("");
+  const [financialTerms, setFinancialTerms] = useState("");
+  const [additionalRequirements, setAdditionalRequirements] =
+    useState("");
+
+  const [agreement, setAgreement] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleGenerate() {
+    if (!agreementType.trim()) {
+      setError("Please select an agreement type.");
+      return;
+    }
+
+    if (!parties.trim()) {
+      setError("Please enter the parties.");
+      return;
+    }
+
+    if (!purpose.trim()) {
+      setError("Please describe the purpose of the agreement.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setAgreement("");
+
+    try {
+      const result = await generateAgreement({
+        agreement_type: agreementType,
+        parties,
+        purpose,
+        location,
+        duration,
+        financial_terms: financialTerms,
+        additional_requirements: additionalRequirements,
+      });
+
+      setAgreement(result.agreement);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Could not generate the agreement. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleDownload() {
+    if (!agreement) {
+      return;
+    }
+
+    const blob = new Blob(
+      [agreement],
+      {
+        type: "text/plain;charset=utf-8",
+      }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      `${agreementType || "ClauseIQ-Agreement"}`
+        .replace(/\s+/g, "-")
+        .toLowerCase() + ".txt";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">
+            CLAUSE ASSISTANT
+          </div>
+
+          <h2>
+            Draft a new agreement
+          </h2>
+
+          <p>
+            Describe your requirements and ClauseIQ will
+            generate an editable agreement draft.
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-title">
+          <div>
+            <h3>Agreement Details</h3>
+
+            <p>
+              Provide the information you want included
+              in the draft.
+            </p>
+          </div>
+        </div>
+
+        <div className="generator-form">
+
+          <label>
+            Agreement Type
+
+            <select
+              value={agreementType}
+              onChange={(e) =>
+                setAgreementType(e.target.value)
+              }
+            >
+              <option value="">
+                Select agreement type
+              </option>
+
+              <option value="Rental Agreement">
+                Rental Agreement
+              </option>
+
+              <option value="Employment Agreement">
+                Employment Agreement
+              </option>
+
+              <option value="Non-Disclosure Agreement">
+                Non-Disclosure Agreement
+              </option>
+
+              <option value="Service Agreement">
+                Service Agreement
+              </option>
+
+              <option value="Freelance Agreement">
+                Freelance Agreement
+              </option>
+
+              <option value="Partnership Agreement">
+                Partnership Agreement
+              </option>
+
+              <option value="Sale Agreement">
+                Sale Agreement
+              </option>
+
+              <option value="Other">
+                Other
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Parties
+
+            <textarea
+              value={parties}
+              onChange={(e) =>
+                setParties(e.target.value)
+              }
+              placeholder="Example: Landlord and Tenant"
+              rows={3}
+            />
+          </label>
+
+          <label>
+            Purpose
+
+            <textarea
+              value={purpose}
+              onChange={(e) =>
+                setPurpose(e.target.value)
+              }
+              placeholder="Describe the purpose of the agreement..."
+              rows={3}
+            />
+          </label>
+
+          <label>
+            Location / Jurisdiction
+
+            <input
+              type="text"
+              value={location}
+              onChange={(e) =>
+                setLocation(e.target.value)
+              }
+              placeholder="Example: Chennai, Tamil Nadu"
+            />
+          </label>
+
+          <label>
+            Duration
+
+            <input
+              type="text"
+              value={duration}
+              onChange={(e) =>
+                setDuration(e.target.value)
+              }
+              placeholder="Example: 11 months"
+            />
+          </label>
+
+          <label>
+            Financial Terms
+
+            <textarea
+              value={financialTerms}
+              onChange={(e) =>
+                setFinancialTerms(e.target.value)
+              }
+              placeholder="Example: Monthly rent ₹20,000 and security deposit ₹60,000"
+              rows={3}
+            />
+          </label>
+
+          <label>
+            Additional Requirements
+
+            <textarea
+              value={additionalRequirements}
+              onChange={(e) =>
+                setAdditionalRequirements(
+                  e.target.value
+                )
+              }
+              placeholder="Add any other requirements..."
+              rows={4}
+            />
+          </label>
+
+          {error && (
+            <div className="notice">
+              <AlertTriangle size={18} />
+
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
+            className="nav-btn active"
+            onClick={() => void handleGenerate()}
+            disabled={loading}
+          >
+            {loading
+              ? "Generating..."
+              : "Generate Agreement"}
+          </button>
+        </div>
+      </div>
+
+      {agreement && (
+        <div
+          className="card"
+          style={{ marginTop: "20px" }}
+        >
+          <div className="section-title">
+            <div>
+              <h3>
+                Generated Agreement
+              </h3>
+
+              <p>
+                Review and edit the draft before using it.
+              </p>
+            </div>
+
+            <button
+              className="nav-btn active"
+              onClick={handleDownload}
+            >
+              Save / Download
+            </button>
+          </div>
+
+          <textarea
+            value={agreement}
+            onChange={(e) =>
+              setAgreement(e.target.value)
+            }
+            rows={30}
+            style={{
+              width: "100%",
+              resize: "vertical",
+              fontFamily: "inherit",
+              lineHeight: 1.6,
+              padding: "16px",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <div className="notice" style={{ marginTop: "16px" }}>
+            <ShieldCheck size={18} />
+
+            <span>
+              This is an AI-generated draft for
+              informational purposes. Review the content
+              carefully before using it.
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function Placeholder({ title, text }: { title: string; text: string }) {
   return (
     <div className="card placeholder">
@@ -833,11 +1155,8 @@ export default function App() {
   />
 )}
           {page === "clause" && (
-            <Placeholder
-              title="Clause Assistant"
-              text="AI-assisted clause drafting is planned for Milestone 3."
-            />
-          )}
+  <ClauseAssistantPage />
+)}
           {page === "settings" && (
             <Placeholder
               title="Settings"
