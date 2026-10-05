@@ -1,4 +1,12 @@
-from app.services.ollama_service import generate_agreement_response
+from app.models.user import User
+
+from app.services.ollama_service import (
+    generate_agreement_response,
+)
+
+from app.services.personalization_service import (
+    build_personalization_context,
+)
 
 
 def generate_agreement(
@@ -9,7 +17,13 @@ def generate_agreement(
     duration: str,
     financial_terms: str,
     additional_requirements: str,
+    user: User | None = None,
 ) -> str:
+
+    personalization_context = ""
+
+    if user is not None:
+        personalization_context = build_personalization_context(user)
 
     prompt = f"""
 You are ClauseIQ's agreement drafting engine.
@@ -50,6 +64,12 @@ Financial Terms:
 
 Additional Requirements:
 {additional_requirements}
+
+========================
+OPTIONAL PERSONALIZATION
+========================
+
+{personalization_context}
 
 ========================
 DRAFTING RULES
@@ -102,6 +122,12 @@ DRAFTING RULES
 15. Do not add explanations before or after the agreement.
 
 16. End the document after the signature section.
+
+17. Use optional personalization only when it is directly
+    relevant to drafting the agreement.
+
+18. Never invent personal information from the personalization
+    context.
 
 ========================
 REQUIRED OUTPUT STRUCTURE

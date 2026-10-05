@@ -3,11 +3,16 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.document import Document
+from app.models.user import User
+from app.routers.auth import get_current_user
+
 from app.schemas.question import (
     AskQuestionRequest,
     AskQuestionResponse,
 )
+
 from app.services.qa_service import ask_agreement
+
 from app.services.retrieval_service import (
     retrieve_relevant_clauses,
 )
@@ -27,6 +32,7 @@ def ask_question(
     document_id: int,
     request: AskQuestionRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     document = db.get(
         Document,
@@ -37,6 +43,13 @@ def ask_question(
         raise HTTPException(
             status_code=404,
             detail="Document not found",
+        )
+
+    # Make sure the document belongs to the logged-in user.
+    if document.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this document.",
         )
 
     question = request.question.strip()
@@ -55,7 +68,6 @@ def ask_question(
             detail="No analyzed clauses found for this document.",
         )
 
-    # Retrieve clauses using PostgreSQL + pgvector.
     relevant_clauses = retrieve_relevant_clauses(
         db=db,
         question=question,
@@ -109,6 +121,7 @@ def retrieve_clauses(
     document_id: int,
     request: AskQuestionRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     document = db.get(
         Document,
@@ -119,6 +132,13 @@ def retrieve_clauses(
         raise HTTPException(
             status_code=404,
             detail="Document not found",
+        )
+
+    # Make sure the document belongs to the logged-in user.
+    if document.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this document.",
         )
 
     question = request.question.strip()

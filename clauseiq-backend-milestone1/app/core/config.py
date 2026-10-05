@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "qwen3:4b"
     OLLAMA_TIMEOUT: int = 300
 
+    AUTH_SECRET_KEY: str
+    AUTH_ALGORITHM: str = "HS256"
+
+    JWT_SECRET_KEY: str = "change-this-development-secret"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -54,3 +54,20 @@ export interface AskQuestionResponse {
   answer: string;
   sources: SourceClause[];
 }
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  age?: number | null;
+  income?: number | null;
+  occupation?: string | null;
+  location?: string | null;
+  personalization_consent: boolean;
+}
+
+export interface AuthResponse {
+  message: string;
+  access_token: string;
+  user: User;
+}

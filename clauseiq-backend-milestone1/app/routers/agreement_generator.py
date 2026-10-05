@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.models.user import User
+from app.routers.auth import get_current_user
 
 from app.schemas.agreement_generator import (
     AgreementGenerationRequest,
@@ -22,6 +25,7 @@ router = APIRouter(
 )
 def generate_agreement_route(
     request: AgreementGenerationRequest,
+    user: User = Depends(get_current_user),
 ):
     try:
         agreement = generate_agreement(
@@ -32,6 +36,7 @@ def generate_agreement_route(
             duration=request.duration,
             financial_terms=request.financial_terms,
             additional_requirements=request.additional_requirements,
+            user=user,
         )
 
     except Exception as exc:

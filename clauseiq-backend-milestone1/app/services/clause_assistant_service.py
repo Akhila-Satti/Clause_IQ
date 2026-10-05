@@ -1,4 +1,8 @@
+from app.models.user import User
 from app.services.ollama_service import generate_response
+from app.services.personalization_service import (
+    build_personalization_context,
+)
 
 
 def ask_about_clause(
@@ -6,10 +10,21 @@ def ask_about_clause(
     section: str,
     title: str,
     clause_text: str,
+    user: User | None = None,
 ) -> str:
     """
     Answer the user's question using only the supplied clause.
+
+    Optional personalization is included only when the
+    authenticated user has given consent.
     """
+
+    personalization_context = ""
+
+    if user:
+        personalization_context = (
+            build_personalization_context(user)
+        )
 
     prompt = f"""
 You are ClauseIQ, an AI-powered legal agreement
@@ -27,6 +42,9 @@ IMPORTANT:
 - Explain the answer in simple language.
 - Preserve the meaning of the original clause.
 - Do not make assumptions about the parties' intentions.
+- Personalization must never override the supplied clause.
+
+{personalization_context}
 
 CLAUSE:
 

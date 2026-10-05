@@ -13,9 +13,31 @@ import {
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
-import type { Analysis, Clause, DocumentInfo, RiskLevel } from "./types";
-import { uploadDocument, getAnalysis, askAgreement, askAboutClause , getDocuments, generateAgreement,} from "./api";
+import type {
+  Analysis,
+  Clause,
+  DocumentInfo,
+  RiskLevel,
+  User,
+} from "./types";
 
+import {
+  uploadDocument,
+  getAnalysis,
+  askAgreement,
+  askAboutClause,
+  getDocuments,
+  generateAgreement,
+  loginUser,
+  signupUser,
+} from "./api";
+
+import {
+  saveAuth,
+  getStoredUser,
+  getToken,
+  clearAuth,
+} from "./auth";
 type Page =
   | "dashboard"
   | "documents"
@@ -1049,6 +1071,87 @@ function ClauseAssistantPage() {
     </div>
   );
 }
+function SettingsPage({
+  user,
+  onLogout,
+}: {
+  user: User;
+  onLogout: () => void;
+}) {
+  return (
+    <div>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">SETTINGS</div>
+
+          <h2>Account & Privacy</h2>
+
+          <p>
+            Manage your ClauseIQ account and personalization preferences.
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-title">
+          <div>
+            <h3>Account Information</h3>
+            <p>Your ClauseIQ account details.</p>
+          </div>
+        </div>
+
+        <div className="feature-list">
+          <div>
+            <strong>Name</strong>
+            <span>{user.full_name || "Not provided"}</span>
+          </div>
+
+          <div>
+            <strong>Email</strong>
+            <span>{user.email}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: "20px" }}>
+        <div className="section-title">
+          <div>
+            <h3>Personalization</h3>
+            <p>
+              Optional profile information may be used to improve
+              future agreement assistance.
+            </p>
+          </div>
+        </div>
+
+        <div className="notice">
+          <ShieldCheck size={18} />
+
+          <span>
+            ClauseIQ's core agreement analysis does not require
+            optional profile information.
+          </span>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: "20px" }}>
+        <div className="section-title">
+          <div>
+            <h3>Account Actions</h3>
+            <p>Sign out of your ClauseIQ account.</p>
+          </div>
+        </div>
+
+        <button
+          className="nav-btn active"
+          onClick={onLogout}
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
 function Placeholder({ title, text }: { title: string; text: string }) {
   return (
     <div className="card placeholder">
@@ -1061,110 +1164,852 @@ function Placeholder({ title, text }: { title: string; text: string }) {
     </div>
   );
 }
+function LoginPage({
+  onLogin,
+  onSignup,
+}: {
+onLogin: (user: User) => void;
+  onSignup: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin() {
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const result = await loginUser({
+        email: email.trim(),
+        password,
+      });
+
+      saveAuth(
+        result.access_token,
+        result.user
+      );
+
+      onLogin(result.user);
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        "Invalid email or password. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+
+        <div className="auth-brand">
+          <div className="auth-logo">⚖</div>
+
+          <div>
+            <strong>ClauseIQ</strong>
+
+            <span>
+              Agreement Understanding Assistant
+            </span>
+          </div>
+        </div>
+
+        <div className="auth-heading">
+          <div className="eyebrow">
+            WELCOME BACK
+          </div>
+
+          <h1>Sign in to ClauseIQ</h1>
+
+          <p>
+            Understand your agreements with your
+            personalized ClauseIQ assistant.
+          </p>
+        </div>
+
+        <div className="auth-form">
+
+          <label>
+            Email
+
+            <input
+              type="email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              placeholder="you@example.com"
+              autoComplete="email"
+              disabled={loading}
+            />
+          </label>
+
+          <label>
+            Password
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              disabled={loading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void handleLogin();
+                }
+              }}
+            />
+          </label>
+
+          {error && (
+            <div className="notice auth-error">
+              <AlertTriangle size={18} />
+
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
+            className="auth-submit"
+            onClick={() => void handleLogin()}
+            disabled={loading}
+          >
+            {loading
+              ? "Signing in..."
+              : "Sign In"}
+          </button>
+
+          <button
+            type="button"
+            className="forgot-password"
+            onClick={() =>
+              alert(
+                "Password recovery will be available in a future update."
+              )
+            }
+          >
+            Forgot password?
+          </button>
+
+        </div>
+
+        <div className="auth-divider">
+          <span>OR</span>
+        </div>
+
+        <div className="auth-signup">
+          <span>
+            Don't have a ClauseIQ account?
+          </span>
+
+          <button
+            type="button"
+            onClick={onSignup}
+          >
+            Create an account
+          </button>
+        </div>
+
+        <div className="auth-disclaimer">
+          <ShieldCheck size={16} />
+
+          <span>
+            ClauseIQ provides AI-assisted agreement
+            information and drafting support. It is
+            not a substitute for professional legal
+            advice.
+          </span>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function SignupPage({
+  onSignup,
+  onLogin,
+}: {
+  onSignup: (user: User) => void;
+  onLogin: () => void;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [age, setAge] = useState("");
+  const [income, setIncome] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [location, setLocation] = useState("");
+
+  const [consent, setConsent] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSignup() {
+    setError("");
+
+    if (!fullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter a password.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError(
+        "Password must contain at least 8 characters."
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    let parsedAge: number | null = null;
+    let parsedIncome: number | null = null;
+
+    if (age.trim()) {
+      parsedAge = Number(age);
+
+      if (
+        !Number.isInteger(parsedAge) ||
+        parsedAge < 13 ||
+        parsedAge > 120
+      ) {
+        setError("Please enter a valid age.");
+        return;
+      }
+    }
+
+    if (income.trim()) {
+      parsedIncome = Number(income);
+
+      if (
+        !Number.isFinite(parsedIncome) ||
+        parsedIncome < 0
+      ) {
+        setError("Please enter a valid income.");
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await signupUser({
+        email: email.trim(),
+        password,
+        full_name: fullName.trim(),
+
+        age: parsedAge,
+        income: parsedIncome,
+
+        occupation:
+          occupation.trim() || null,
+
+        location:
+          location.trim() || null,
+
+        personalization_consent: consent,
+      });
+
+      saveAuth(
+        result.access_token,
+        result.user
+      );
+
+      onSignup(result.user);
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not create your account."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div
+        className="auth-card"
+        style={{ maxWidth: "520px" }}
+      >
+
+        <div className="auth-brand">
+          <div className="auth-logo">
+            ⚖
+          </div>
+
+          <div>
+            <strong>ClauseIQ</strong>
+
+            <span>
+              Agreement Understanding Assistant
+            </span>
+          </div>
+        </div>
+
+        <div className="auth-heading">
+          <div className="eyebrow">
+            CREATE ACCOUNT
+          </div>
+
+          <h1>Join ClauseIQ</h1>
+
+          <p>
+            Create your account and optionally provide
+            information that can help personalize your
+            agreement experience.
+          </p>
+        </div>
+
+        <div className="auth-form">
+
+          <label>
+            Full Name
+
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) =>
+                setFullName(e.target.value)
+              }
+              placeholder="Your full name"
+              autoComplete="name"
+              disabled={loading}
+            />
+          </label>
+
+          <label>
+            Email
+
+            <input
+              type="email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              placeholder="you@example.com"
+              autoComplete="email"
+              disabled={loading}
+            />
+          </label>
+
+          <label>
+            Password
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              disabled={loading}
+            />
+          </label>
+
+          <label>
+            Confirm Password
+
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
+              placeholder="Re-enter your password"
+              autoComplete="new-password"
+              disabled={loading}
+            />
+          </label>
+
+          <div className="auth-profile-section">
+            <div className="auth-profile-heading">
+              <strong>
+                Optional Profile Information
+              </strong>
+
+              <span>
+                This information can help personalize
+                future agreement assistance.
+              </span>
+            </div>
+
+            <label>
+              Age
+
+              <input
+                type="number"
+                value={age}
+                onChange={(e) =>
+                  setAge(e.target.value)
+                }
+                placeholder="Optional"
+                min="13"
+                max="120"
+                disabled={loading}
+              />
+            </label>
+
+            <label>
+              Income
+
+              <input
+                type="number"
+                value={income}
+                onChange={(e) =>
+                  setIncome(e.target.value)
+                }
+                placeholder="Optional"
+                min="0"
+                disabled={loading}
+              />
+            </label>
+
+            <label>
+              Occupation
+
+              <input
+                type="text"
+                value={occupation}
+                onChange={(e) =>
+                  setOccupation(e.target.value)
+                }
+                placeholder="Example: Software Engineer"
+                disabled={loading}
+              />
+            </label>
+
+            <label>
+              Location
+
+              <input
+                type="text"
+                value={location}
+                onChange={(e) =>
+                  setLocation(e.target.value)
+                }
+                placeholder="Example: Chennai, Tamil Nadu"
+                disabled={loading}
+              />
+            </label>
+
+            <label className="consent-row">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) =>
+                  setConsent(e.target.checked)
+                }
+                disabled={loading}
+              />
+
+              <span>
+                I consent to ClauseIQ using the optional
+                profile information I provide to personalize
+                future agreement assistance.
+              </span>
+            </label>
+          </div>
+
+          {error && (
+            <div className="notice auth-error">
+              <AlertTriangle size={18} />
+
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
+            className="auth-submit"
+            onClick={() => void handleSignup()}
+            disabled={loading}
+          >
+            {loading
+              ? "Creating account..."
+              : "Create Account"}
+          </button>
+
+        </div>
+
+        <div className="auth-signup">
+          <span>
+            Already have an account?
+          </span>
+
+          <button
+            type="button"
+            onClick={onLogin}
+            disabled={loading}
+          >
+            Sign in
+          </button>
+        </div>
+
+        <div className="auth-disclaimer">
+          <ShieldCheck size={16} />
+
+          <span>
+            Optional profile information is not required
+            to use the core ClauseIQ agreement analysis
+            features.
+          </span>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
-  const [page, setPage] = useState<Page>("dashboard");
-  const [document, setDocument] = useState<DocumentInfo>();
-  const [analysis, setAnalysis] = useState<Analysis>();
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [selectedClauseId, setSelectedClauseId] = useState<string>();
-  async function uploaded(d: DocumentInfo) {
+  const storedUser = getStoredUser();
+  const storedToken = getToken();
+
+  const [user, setUser] = useState<User | null>(
+    storedUser
+  );
+
+  const [authenticated, setAuthenticated] =
+    useState<boolean>(
+      !!storedUser && !!storedToken
+    );
+
+  const [showSignup, setShowSignup] =
+    useState(false);
+
+  const [page, setPage] =
+    useState<Page>("dashboard");
+
+  const [document, setDocument] =
+    useState<DocumentInfo>();
+
+  const [analysis, setAnalysis] =
+    useState<Analysis>();
+
+  const [loadingAnalysis, setLoadingAnalysis] =
+    useState(false);
+
+  const [selectedClauseId, setSelectedClauseId] =
+    useState<string>();
+
+
+  // ================================
+  // LOGIN
+  // ================================
+
+  function handleLogin(loggedInUser: User) {
+    setUser(loggedInUser);
+    setAuthenticated(true);
+    setShowSignup(false);
+    setPage("dashboard");
+  }
+
+
+  // ================================
+  // SIGNUP
+  // ================================
+
+  function handleSignup(loggedInUser: User) {
+    setUser(loggedInUser);
+    setAuthenticated(true);
+    setShowSignup(false);
+    setPage("dashboard");
+  }
+
+  function handleLogout() {
+  clearAuth();
+  setUser(null);
+  setAuthenticated(false);
+  setShowSignup(false);
+  setPage("dashboard");
+  setDocument(undefined);
+  setAnalysis(undefined);
   setSelectedClauseId(undefined);
-  setDocument(d);
-  setLoadingAnalysis(true);
-  setPage("analysis");
+}
+
+  // ================================
+  // DOCUMENT UPLOAD
+  // ================================
+
+  async function uploaded(d: DocumentInfo) {
+    setSelectedClauseId(undefined);
+    setDocument(d);
+    setLoadingAnalysis(true);
+    setPage("analysis");
 
     try {
       const result = await getAnalysis(d.id);
       setAnalysis(result);
     } catch (error) {
       console.error(error);
-      alert("Document uploaded, but analysis could not be loaded.");
+
+      alert(
+        "Document uploaded, but analysis could not be loaded."
+      );
     } finally {
       setLoadingAnalysis(false);
     }
   }
 
+
+  // ================================
+  // AUTHENTICATION SCREEN
+  // ================================
+
+  if (!authenticated) {
+    if (showSignup) {
+      return (
+        <SignupPage
+          onSignup={handleSignup}
+          onLogin={() => setShowSignup(false)}
+        />
+      );
+    }
+
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onSignup={() => setShowSignup(true)}
+      />
+    );
+  }
+
+
+  // ================================
+  // MAIN CLAUSEIQ APP
+  // ================================
+
   return (
     <div className="app">
-      <Sidebar page={page} setPage={setPage} />
+
+      <Sidebar
+        page={page}
+        setPage={setPage}
+      />
+
       <main className="main">
+
         <header className="topbar">
+
           <div>
-            <span className="mobile-brand">ClauseIQ</span>
-            <small>AI-POWERED AGREEMENT ASSISTANT</small>
+            <span className="mobile-brand">
+              ClauseIQ
+            </span>
+
+            <small>
+              AI-POWERED AGREEMENT ASSISTANT
+            </small>
           </div>
-          <div className="avatar">U</div>
+
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
+
+            <span
+              style={{
+                fontSize: "13px",
+                color: "#6b7280",
+              }}
+            >
+              {user?.full_name || user?.email}
+            </span>
+
+
+            <div
+              className="avatar"
+              title={user?.email || "User"}
+            >
+              {user?.full_name
+                ? user.full_name
+                    .charAt(0)
+                    .toUpperCase()
+                : "U"}
+            </div>
+
+          </div>
+
         </header>
+
+
         <div className="content">
-          {page === "dashboard" && <Dashboard onUploaded={uploaded} />}
-          {page === "analysis" &&
-            (loadingAnalysis ? (
-              <div className="card placeholder">
-                <div className="placeholder-icon">
-                  <FileText size={25} />
-                </div>
 
-                <h2>Analyzing agreement...</h2>
+          {/* DASHBOARD */}
 
-                <p>
-                  ClauseIQ is extracting clauses and identifying potential
-                  risks.
-                </p>
-              </div>
-            ) : analysis ? (
-              <AnalysisPage
-  analysis={analysis}
-  document={document}
-  initialClauseId={selectedClauseId}
-/>
-            ) : (
-              <div className="card placeholder">
-                <h2>No analysis available</h2>
-                <p>Upload an agreement to begin analysis.</p>
-              </div>
-            ))}
-          {page === "documents" && (
-  <DocumentsPage
-    onOpenDocument={async (doc) => {
-  setSelectedClauseId(undefined);
-  setDocument(doc);
-  setLoadingAnalysis(true);
-  setPage("analysis");
-
-      try {
-        const result = await getAnalysis(doc.id);
-        setAnalysis(result);
-      } catch (error) {
-        console.error(error);
-        alert("Could not load document analysis.");
-      } finally {
-        setLoadingAnalysis(false);
-      }
-    }}
-  />
-)}
-          {page === "ask" && (
-  <AskAgreementPage
-    document={document}
-    onOpenSource={(clauseId) => {
-      setSelectedClauseId(clauseId);
-      setPage("analysis");
-    }}
-  />
-)}
-          {page === "clause" && (
-  <ClauseAssistantPage />
-)}
-          {page === "settings" && (
-            <Placeholder
-              title="Settings"
-              text="Application and privacy settings will be added as the desktop app matures."
+          {page === "dashboard" && (
+            <Dashboard
+              onUploaded={uploaded}
             />
           )}
+
+
+          {/* ANALYSIS */}
+
+          {page === "analysis" &&
+            (
+              loadingAnalysis ? (
+
+                <div className="card placeholder">
+
+                  <div className="placeholder-icon">
+                    <FileText size={25} />
+                  </div>
+
+                  <h2>
+                    Analyzing agreement...
+                  </h2>
+
+                  <p>
+                    ClauseIQ is extracting clauses
+                    and identifying potential risks.
+                  </p>
+
+                </div>
+
+              ) : analysis ? (
+
+                <AnalysisPage
+                  analysis={analysis}
+                  document={document}
+                  initialClauseId={selectedClauseId}
+                />
+
+              ) : (
+
+                <div className="card placeholder">
+
+                  <h2>
+                    No analysis available
+                  </h2>
+
+                  <p>
+                    Upload an agreement to begin
+                    analysis.
+                  </p>
+
+                </div>
+
+              )
+            )
+          }
+
+
+          {/* DOCUMENTS */}
+
+          {page === "documents" && (
+            <DocumentsPage
+              onOpenDocument={async (doc) => {
+
+                setSelectedClauseId(undefined);
+                setDocument(doc);
+                setLoadingAnalysis(true);
+                setPage("analysis");
+
+                try {
+
+                  const result =
+                    await getAnalysis(doc.id);
+
+                  setAnalysis(result);
+
+                } catch (error) {
+
+                  console.error(error);
+
+                  alert(
+                    "Could not load document analysis."
+                  );
+
+                } finally {
+
+                  setLoadingAnalysis(false);
+
+                }
+
+              }}
+            />
+          )}
+
+
+          {/* ASK AGREEMENT */}
+
+          {page === "ask" && (
+            <AskAgreementPage
+              document={document}
+              onOpenSource={(clauseId) => {
+
+                setSelectedClauseId(clauseId);
+                setPage("analysis");
+
+              }}
+            />
+          )}
+
+
+          {/* CLAUSE ASSISTANT */}
+
+          {page === "clause" && (
+            <ClauseAssistantPage />
+          )}
+
+
+          {/* SETTINGS */}
+
+          {page === "settings" && user && (
+  <SettingsPage
+    user={user}
+    onLogout={handleLogout}
+  />
+)}
+
         </div>
+
       </main>
+
     </div>
   );
 }
+  
+

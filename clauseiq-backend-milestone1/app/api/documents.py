@@ -1,28 +1,59 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+
+from app.models.user import User
 from app.models.clause import Clause
 from app.models.document import Document
 from app.models.analysis import Analysis
+
 from app.schemas.analysis import AnalysisResponse
 from app.schemas.document import DocumentResponse
-from app.services.analysis_service import build_analysis
-from app.services.clause_service import segment_clauses
-from app.services.embedding_service import generate_embedding
-from app.services.document_service import ALLOWED_TYPES, extract_text
+
 from app.schemas.clause_assistant import (
     ClauseQuestionRequest,
     ClauseQuestionResponse,
 )
-from app.services.clause_assistant_service import ask_about_clause
+
+from app.schemas.question import (
+    AskQuestionRequest,
+    AskQuestionResponse,
+)
+
+from app.services.analysis_service import build_analysis
+from app.services.clause_service import segment_clauses
+from app.services.embedding_service import generate_embedding
+from app.services.document_service import (
+    ALLOWED_TYPES,
+    extract_text,
+)
+from app.services.clause_assistant_service import (
+    ask_about_clause,
+)
+from app.services.qa_service import ask_agreement
+from app.services.retrieval_service import (
+    retrieve_relevant_clauses,
+)
+
+from app.routers.auth import get_current_user
 
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
+router = APIRouter(
+    prefix="/documents",
+    tags=["Documents"],
+)
 
 
 def _document_response(document: Document) -> dict:
@@ -36,7 +67,10 @@ def _document_response(document: Document) -> dict:
     }
 
 
-def _analysis_response(analysis: Analysis, clauses: list[Clause]) -> dict:
+def _analysis_response(
+    analysis: Analysis,
+    clauses: list[Clause],
+) -> dict:
     return {
         "summary": analysis.summary or "",
         "overallScore": analysis.overall_score,
@@ -68,6 +102,7 @@ def _analysis_response(analysis: Analysis, clauses: list[Clause]) -> dict:
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     extension = Path(file.filename or "").suffix.lower()
 
@@ -83,26 +118,38 @@ async def upload_document(
     if len(content) > max_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File is larger than {settings.max_file_size_mb} MB.",
+            detail=(
+                f"File is larger than "
+                f"{settings.max_file_size_mb} MB."
+            ),
         )
 
     upload_dir = Path(settings.upload_dir)
-    upload_dir.mkdir(parents=True, exist_ok=True)
+    upload_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     stored_name = f"{uuid4().hex}{extension}"
     path = upload_dir / stored_name
     path.write_bytes(content)
 
     try:
-        extracted_text = extract_text(path, extension)
+        extracted_text = extract_text(
+            path,
+            extension,
+        )
+
     except Exception as exc:
         path.unlink(missing_ok=True)
+
         raise HTTPException(
             status_code=422,
             detail=f"Could not extract document text: {exc}",
         )
 
     document = Document(
+        user_id=user.id,
         filename=file.filename or stored_name,
         file_type=ALLOWED_TYPES[extension],
         file_size=len(content),
@@ -115,7 +162,9 @@ async def upload_document(
     db.commit()
     db.refresh(document)
 
-    clause_data = segment_clauses(extracted_text)
+    clause_data = segment_clauses(
+        extracted_text
+    )
 
     clause_models = []
 
@@ -130,7 +179,9 @@ async def upload_document(
         )
 
         try:
-            embedding = generate_embedding(embedding_text)
+            embedding = generate_embedding(
+                embedding_text
+            )
 
         except Exception as exc:
             db.rollback()
@@ -141,7 +192,9 @@ async def upload_document(
 
             raise HTTPException(
                 status_code=502,
-                detail=f"Embedding generation failed: {exc}",
+                detail=(
+                    f"Embedding generation failed: {exc}"
+                ),
             )
 
         clause = Clause(
@@ -167,11 +220,15 @@ async def upload_document(
         db,
         document.id,
         clause_models,
-        summary="Document analyzed using ClauseIQ's rule-based clause analysis.",
+        summary=(
+            "Document analyzed using ClauseIQ's "
+            "rule-based clause analysis."
+        ),
         recommendations=[],
     )
 
     document.status = "analyzed"
+
     db.add(document)
     db.commit()
     db.refresh(document)
@@ -179,23 +236,48 @@ async def upload_document(
     return _document_response(document)
 
 
-@router.get("", response_model=list[DocumentResponse])
-def list_documents(db: Session = Depends(get_db)):
+@router.get(
+    "",
+    response_model=list[DocumentResponse],
+)
+def list_documents(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     documents = (
         db.query(Document)
-        .order_by(Document.created_at.desc())
+        .filter(
+            Document.user_id == user.id
+        )
+        .order_by(
+            Document.created_at.desc()
+        )
         .all()
     )
 
-    return [_document_response(d) for d in documents]
+    return [
+        _document_response(document)
+        for document in documents
+    ]
 
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+)
 def get_document(
     document_id: int,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    document = db.get(Document, document_id)
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
 
     if not document:
         raise HTTPException(
@@ -206,12 +288,22 @@ def get_document(
     return _document_response(document)
 
 
-@router.get("/{document_id}/clauses")
+@router.get(
+    "/{document_id}/clauses",
+)
 def get_clauses(
     document_id: int,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    document = db.get(Document, document_id)
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
 
     if not document:
         raise HTTPException(
@@ -245,8 +337,16 @@ def ask_clause_question(
     clause_id: int,
     request: ClauseQuestionRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    document = db.get(Document, document_id)
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
 
     if not document:
         raise HTTPException(
@@ -304,8 +404,16 @@ def ask_clause_question(
 def get_analysis(
     document_id: int,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    document = db.get(Document, document_id)
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
 
     if not document:
         raise HTTPException(
@@ -315,8 +423,12 @@ def get_analysis(
 
     analysis = (
         db.query(Analysis)
-        .filter(Analysis.document_id == document_id)
-        .order_by(Analysis.created_at.desc())
+        .filter(
+            Analysis.document_id == document_id
+        )
+        .order_by(
+            Analysis.created_at.desc()
+        )
         .first()
     )
 
@@ -330,3 +442,148 @@ def get_analysis(
         analysis,
         document.clauses,
     )
+
+
+# ============================================================
+# ASK QUESTIONS ABOUT THE WHOLE AGREEMENT
+# ============================================================
+
+@router.post(
+    "/{document_id}/ask",
+    response_model=AskQuestionResponse,
+)
+def ask_question(
+    document_id: int,
+    request: AskQuestionRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty.",
+        )
+
+    clauses = document.clauses
+
+    if not clauses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No analyzed clauses found "
+                "for this document."
+            ),
+        )
+
+    relevant_clauses = retrieve_relevant_clauses(
+        db=db,
+        question=question,
+        document_id=document_id,
+        top_k=3,
+    )
+
+    if not relevant_clauses:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No relevant clauses were found "
+                "for this question."
+            ),
+        )
+
+    try:
+        answer = ask_agreement(
+            question=question,
+            clauses=relevant_clauses,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Agreement question answering failed: {exc}"
+            ),
+        )
+
+    return {
+        "question": question,
+        "answer": answer,
+        "sources": [
+            {
+                "clause_id": str(clause.id),
+                "section": clause.section,
+                "title": clause.title,
+                "category": clause.category,
+                "text": clause.text,
+            }
+            for clause in relevant_clauses
+        ],
+    }
+
+
+@router.post(
+    "/{document_id}/retrieve",
+)
+def retrieve_clauses(
+    document_id: int,
+    request: AskQuestionRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty.",
+        )
+
+    relevant_clauses = retrieve_relevant_clauses(
+        db=db,
+        question=question,
+        document_id=document_id,
+        top_k=3,
+    )
+
+    return [
+        {
+            "id": str(clause.id),
+            "section": clause.section,
+            "title": clause.title,
+            "category": clause.category,
+            "text": clause.text,
+        }
+        for clause in relevant_clauses
+    ]
