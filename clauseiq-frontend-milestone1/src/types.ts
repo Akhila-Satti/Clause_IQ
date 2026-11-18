@@ -59,10 +59,10 @@ export interface User {
   id: number;
   email: string;
   full_name: string;
-  age?: number | null;
-  income?: number | null;
-  occupation?: string | null;
-  location?: string | null;
+  age: number | null;
+  occupation: string | null;
+  income: number | null;
+  location: string | null;
   personalization_consent: boolean;
 }
 

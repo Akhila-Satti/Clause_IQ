@@ -43,8 +43,8 @@ class User(Base):
         nullable=True,
     )
 
-    income: Mapped[str | None] = mapped_column(
-        String(100),
+    income: Mapped[int | None] = mapped_column(
+        Integer,
         nullable=True,
     )
 

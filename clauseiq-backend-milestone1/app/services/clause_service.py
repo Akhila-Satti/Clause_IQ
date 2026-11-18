@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from app.services.ml_classifier_service import predict_category
 
 
 @dataclass
@@ -31,15 +32,10 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def classify_clause(text: str) -> tuple[str, str]:
-    lower = text.lower()
-    matches = [
-        category
-        for category, keywords in CATEGORY_KEYWORDS.items()
-        if any(keyword in lower for keyword in keywords)
-    ]
 
-    category = matches[0] if matches else "General"
+def classify_risk(text: str) -> str:
+
+    lower = text.lower()
 
     high_signals = [
         "automatically renew",
@@ -51,6 +47,7 @@ def classify_clause(text: str) -> tuple[str, str]:
         "non-refundable",
         "unlimited license",
     ]
+
     medium_signals = [
         "may change",
         "retain",
@@ -61,13 +58,24 @@ def classify_clause(text: str) -> tuple[str, str]:
     ]
 
     if any(signal in lower for signal in high_signals):
-        risk = "HIGH"
+        return "HIGH"
+
     elif any(signal in lower for signal in medium_signals):
-        risk = "MEDIUM"
-    else:
-        risk = "LOW"
+        return "MEDIUM"
+
+    return "LOW"
+
+
+def classify_clause(text: str) -> tuple[str, str]:
+
+    # Category from trained ML model
+    category = predict_category(text)
+
+    # Risk from existing rule-based logic
+    risk = classify_risk(text)
 
     return category, risk
+
 
 
 def explain_clause(text: str, category: str) -> str:
@@ -83,6 +91,17 @@ def explain_clause(text: str, category: str) -> str:
         return "This provision relates to ownership, licensing, or permitted use of intellectual property or uploaded content."
     if category == "Contractual":
         return "This provision concerns contractual rights or obligations such as arbitration, liability, indemnification, or governing law."
+    if category == "Account":
+        return (
+            "This provision relates to account access, "
+            "suspension, termination, or restrictions."
+        )
+
+    if category == "Changes":
+        return (
+            "This provision relates to changes, updates, "
+            "or modifications to contractual terms."
+        )
     return "This clause was extracted from the agreement for review. Its practical meaning should be considered together with the surrounding provisions."
 
 

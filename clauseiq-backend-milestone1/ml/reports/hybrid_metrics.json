@@ -1,0 +1,166 @@
+{
+    "model": "Hybrid",
+    "test_records": 7018,
+    "confidence_threshold": 0.6,
+    "accuracy": 0.9951553149045312,
+    "precision_macro": 0.9955783948244767,
+    "recall_macro": 0.9953842239079804,
+    "macro_f1": 0.9954754459639944,
+    "weighted_f1": 0.9951573908828923,
+    "classification_report": {
+        "Privacy": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 750.0
+        },
+        "Financial": {
+            "precision": 0.9858490566037735,
+            "recall": 0.9952380952380953,
+            "f1-score": 0.990521327014218,
+            "support": 1050.0
+        },
+        "Cancellation": {
+            "precision": 0.9922222222222222,
+            "recall": 0.9933259176863182,
+            "f1-score": 0.9927737632017788,
+            "support": 899.0
+        },
+        "Data": {
+            "precision": 0.9973404255319149,
+            "recall": 1.0,
+            "f1-score": 0.9986684420772304,
+            "support": 750.0
+        },
+        "Intellectual Property": {
+            "precision": 0.9974747474747475,
+            "recall": 0.9949622166246851,
+            "f1-score": 0.9962168978562421,
+            "support": 794.0
+        },
+        "Contractual": {
+            "precision": 0.9961904761904762,
+            "recall": 0.9961904761904762,
+            "f1-score": 0.9961904761904762,
+            "support": 1050.0
+        },
+        "Account": {
+            "precision": 0.99867197875166,
+            "recall": 0.9947089947089947,
+            "f1-score": 0.9966865473823724,
+            "support": 756.0
+        },
+        "Changes": {
+            "precision": 0.9968782518210197,
+            "recall": 0.9886480908152735,
+            "f1-score": 0.9927461139896373,
+            "support": 969.0
+        },
+        "accuracy": 0.9951553149045312,
+        "macro avg": {
+            "precision": 0.9955783948244767,
+            "recall": 0.9953842239079804,
+            "f1-score": 0.9954754459639944,
+            "support": 7018.0
+        },
+        "weighted avg": {
+            "precision": 0.9951724989749855,
+            "recall": 0.9951553149045312,
+            "f1-score": 0.9951573908828923,
+            "support": 7018.0
+        }
+    },
+    "confusion_matrix": [
+        [
+            750,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            1045,
+            3,
+            0,
+            0,
+            1,
+            0,
+            1
+        ],
+        [
+            0,
+            2,
+            893,
+            1,
+            0,
+            0,
+            1,
+            2
+        ],
+        [
+            0,
+            0,
+            0,
+            750,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            4,
+            0,
+            0,
+            790,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            4,
+            0,
+            0,
+            0,
+            1046,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            2,
+            0,
+            2,
+            0,
+            752,
+            0
+        ],
+        [
+            0,
+            5,
+            2,
+            1,
+            0,
+            3,
+            0,
+            958
+        ]
+    ],
+    "categories": [
+        "Privacy",
+        "Financial",
+        "Cancellation",
+        "Data",
+        "Intellectual Property",
+        "Contractual",
+        "Account",
+        "Changes"
+    ],
+    "rule_overrides": 29
+}

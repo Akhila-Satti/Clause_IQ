@@ -1,3 +1,4 @@
+
 from app.models.user import User
 from app.services.ollama_service import generate_response
 from app.services.personalization_service import (
@@ -13,64 +14,97 @@ def ask_about_clause(
     user: User | None = None,
 ) -> str:
     """
-    Answer the user's question using only the supplied clause.
+    Answer questions about one selected agreement clause.
 
-    Optional personalization is included only when the
-    authenticated user has given consent.
+    Personalization is included only when the authenticated
+    user has explicitly consented.
     """
+
+    if not question or not question.strip():
+        raise ValueError("Question cannot be empty.")
+
+    if not clause_text or not clause_text.strip():
+        raise ValueError("Clause text cannot be empty.")
 
     personalization_context = ""
 
     if user:
+        personalization_context = build_personalization_context(user)
+
+    if not personalization_context:
         personalization_context = (
-            build_personalization_context(user)
+            "No user profile context was supplied."
         )
 
     prompt = f"""
-You are ClauseIQ, an AI-powered legal agreement
-understanding assistant.
+/no_think
 
-Answer the user's question using ONLY the supplied clause.
+You are ClauseIQ, an agreement understanding assistant.
 
-IMPORTANT:
-- Do not invent information.
-- Do not use information outside the supplied clause.
+TASK:
+Answer the user's question about the selected agreement clause.
+
+STRICT CLAUSE ACCURACY RULES:
+- Use ONLY the supplied clause for contractual claims.
+- Do not use other clauses or invent agreement provisions.
+- Do not assume restrictions that are not explicitly stated.
+- Preserve the original meaning of the clause.
+- If the answer cannot be established from this clause,
+  clearly explain that the information is not available
+  in the selected clause.
 - Do not provide definitive legal advice.
-- Do not claim that the clause is legally valid or invalid.
-- If the clause does not contain enough information to answer,
-  clearly say that the information is not available in this clause.
-- Explain the answer in simple language.
-- Preserve the meaning of the original clause.
-- Do not make assumptions about the parties' intentions.
-- Personalization must never override the supplied clause.
+- Do not declare the clause legally valid or invalid.
 
+PERSONALIZATION RULES:
+- Use profile information only when relevant.
+- Explain how the clause may relate to the user's
+  occupation, age, income or location when appropriate.
+- Personal information must never change the meaning
+  of the clause.
+- Never invent contractual restrictions based on
+  the user's profile.
+- Do not unnecessarily repeat personal information.
+- If no profile context is supplied, simply answer
+  without mentioning missing personalization.
+
+OUTPUT RULES:
+- Return ONLY the final user-facing answer.
+- Never reveal internal reasoning or thought processes.
+- Do not narrate your analysis.
+- Do not write phrases such as "Let's analyze" or
+  "We are given the question".
+- Start with a direct answer.
+- Explain the clause in simple language.
+- Include personal relevance when applicable.
+- End with a practical conclusion.
+- Be concise and clear.
+
+USER PROFILE CONTEXT:
 {personalization_context}
 
-CLAUSE:
+SELECTED CLAUSE:
 
-Section:
-{section}
+Section: {section}
 
-Title:
-{title}
+Title: {title}
 
-Text:
+Clause Text:
 {clause_text}
 
 USER QUESTION:
 {question}
 
-Provide a concise, easy-to-understand answer.
+Provide the final answer now.
 """
 
     answer = generate_response(
         prompt,
-        temperature=0.2,
+        temperature=0.1,
     )
 
-    if not answer:
+    if not answer or not answer.strip():
         raise ValueError(
             "Ollama returned an empty answer."
         )
 
-    return answer
+    return answer.strip()

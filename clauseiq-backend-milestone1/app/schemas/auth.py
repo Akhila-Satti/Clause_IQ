@@ -9,7 +9,7 @@ class SignupRequest(BaseModel):
 
     age: int | None = None
     occupation: str | None = None
-    income: str | None = None
+    income: int | None = None
     location: str | None = None
 
     personalization_consent: bool = False
@@ -27,7 +27,7 @@ class UserResponse(BaseModel):
 
     age: int | None
     occupation: str | None
-    income: str | None
+    income: int | None
     location: str | None
 
     personalization_consent: bool

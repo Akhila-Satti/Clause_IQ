@@ -1071,6 +1071,7 @@ function ClauseAssistantPage() {
     </div>
   );
 }
+
 function SettingsPage({
   user,
   onLogout,
@@ -1083,12 +1084,8 @@ function SettingsPage({
       <div className="page-heading">
         <div>
           <div className="eyebrow">SETTINGS</div>
-
           <h2>Account & Privacy</h2>
-
-          <p>
-            Manage your ClauseIQ account and personalization preferences.
-          </p>
+          <p>Manage your ClauseIQ account and personalization preferences.</p>
         </div>
       </div>
 
@@ -1101,36 +1098,28 @@ function SettingsPage({
         </div>
 
         <div className="feature-list">
-          <div>
-            <strong>Name</strong>
-            <span>{user.full_name || "Not provided"}</span>
-          </div>
-
-          <div>
-            <strong>Email</strong>
-            <span>{user.email}</span>
-          </div>
+          <div><strong>Name</strong><span>{user.full_name || "Not provided"}</span></div>
+          <div><strong>Email</strong><span>{user.email}</span></div>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: "20px" }}>
         <div className="section-title">
           <div>
-            <h3>Personalization</h3>
-            <p>
-              Optional profile information may be used to improve
-              future agreement assistance.
-            </p>
+            <h3>Personalization Profile</h3>
+            <p>Information used for relevant agreement explanations.</p>
           </div>
         </div>
 
-        <div className="notice">
-          <ShieldCheck size={18} />
-
-          <span>
-            ClauseIQ's core agreement analysis does not require
-            optional profile information.
-          </span>
+        <div className="feature-list">
+          <div><strong>Age</strong><span>{user.age ?? "Not provided"}</span></div>
+          <div><strong>Occupation</strong><span>{user.occupation || "Not provided"}</span></div>
+          <div><strong>Income</strong><span>{user.income ?? "Not provided"}</span></div>
+          <div><strong>Location</strong><span>{user.location || "Not provided"}</span></div>
+          <div>
+            <strong>Personalization Consent</strong>
+            <span>{user.personalization_consent ? "Enabled" : "Disabled"}</span>
+          </div>
         </div>
       </div>
 
@@ -1142,16 +1131,14 @@ function SettingsPage({
           </div>
         </div>
 
-        <button
-          className="nav-btn active"
-          onClick={onLogout}
-        >
+        <button className="nav-btn active" onClick={onLogout}>
           Sign Out
         </button>
       </div>
     </div>
   );
 }
+
 function Placeholder({ title, text }: { title: string; text: string }) {
   return (
     <div className="card placeholder">

@@ -27,10 +27,7 @@ from app.schemas.clause_assistant import (
     ClauseQuestionResponse,
 )
 
-from app.schemas.question import (
-    AskQuestionRequest,
-    AskQuestionResponse,
-)
+
 
 from app.services.analysis_service import build_analysis
 from app.services.clause_service import segment_clauses
@@ -42,10 +39,7 @@ from app.services.document_service import (
 from app.services.clause_assistant_service import (
     ask_about_clause,
 )
-from app.services.qa_service import ask_agreement
-from app.services.retrieval_service import (
-    retrieve_relevant_clauses,
-)
+
 
 from app.routers.auth import get_current_user
 
@@ -381,6 +375,7 @@ def ask_clause_question(
             section=clause.section,
             title=clause.title,
             clause_text=clause.text,
+            user=user,
         )
 
     except Exception as exc:
@@ -443,147 +438,3 @@ def get_analysis(
         document.clauses,
     )
 
-
-# ============================================================
-# ASK QUESTIONS ABOUT THE WHOLE AGREEMENT
-# ============================================================
-
-@router.post(
-    "/{document_id}/ask",
-    response_model=AskQuestionResponse,
-)
-def ask_question(
-    document_id: int,
-    request: AskQuestionRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    document = (
-        db.query(Document)
-        .filter(
-            Document.id == document_id,
-            Document.user_id == user.id,
-        )
-        .first()
-    )
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Document not found",
-        )
-
-    question = request.question.strip()
-
-    if not question:
-        raise HTTPException(
-            status_code=400,
-            detail="Question cannot be empty.",
-        )
-
-    clauses = document.clauses
-
-    if not clauses:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "No analyzed clauses found "
-                "for this document."
-            ),
-        )
-
-    relevant_clauses = retrieve_relevant_clauses(
-        db=db,
-        question=question,
-        document_id=document_id,
-        top_k=3,
-    )
-
-    if not relevant_clauses:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "No relevant clauses were found "
-                "for this question."
-            ),
-        )
-
-    try:
-        answer = ask_agreement(
-            question=question,
-            clauses=relevant_clauses,
-        )
-
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                f"Agreement question answering failed: {exc}"
-            ),
-        )
-
-    return {
-        "question": question,
-        "answer": answer,
-        "sources": [
-            {
-                "clause_id": str(clause.id),
-                "section": clause.section,
-                "title": clause.title,
-                "category": clause.category,
-                "text": clause.text,
-            }
-            for clause in relevant_clauses
-        ],
-    }
-
-
-@router.post(
-    "/{document_id}/retrieve",
-)
-def retrieve_clauses(
-    document_id: int,
-    request: AskQuestionRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    document = (
-        db.query(Document)
-        .filter(
-            Document.id == document_id,
-            Document.user_id == user.id,
-        )
-        .first()
-    )
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Document not found",
-        )
-
-    question = request.question.strip()
-
-    if not question:
-        raise HTTPException(
-            status_code=400,
-            detail="Question cannot be empty.",
-        )
-
-    relevant_clauses = retrieve_relevant_clauses(
-        db=db,
-        question=question,
-        document_id=document_id,
-        top_k=3,
-    )
-
-    return [
-        {
-            "id": str(clause.id),
-            "section": clause.section,
-            "title": clause.title,
-            "category": clause.category,
-            "text": clause.text,
-        }
-        for clause in relevant_clauses
-    ]

@@ -1,0 +1,68 @@
+{
+    "accuracy": 0.9967227130236535,
+    "macro_f1": 0.9969893500120368,
+    "weighted_f1": 0.9967231945610948,
+    "classification_report": {
+        "Privacy": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 750.0
+        },
+        "Financial": {
+            "precision": 0.9924026590693258,
+            "recall": 0.9952380952380953,
+            "f1-score": 0.9938183547313362,
+            "support": 1050.0
+        },
+        "Cancellation": {
+            "precision": 0.9944444444444445,
+            "recall": 0.9955506117908788,
+            "f1-score": 0.9949972206781545,
+            "support": 899.0
+        },
+        "Data": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 750.0
+        },
+        "Intellectual Property": {
+            "precision": 1.0,
+            "recall": 0.9949622166246851,
+            "f1-score": 0.9974747474747475,
+            "support": 794.0
+        },
+        "Contractual": {
+            "precision": 0.9961977186311787,
+            "recall": 0.9980952380952381,
+            "f1-score": 0.9971455756422455,
+            "support": 1050.0
+        },
+        "Account": {
+            "precision": 0.9986772486772487,
+            "recall": 0.9986772486772487,
+            "f1-score": 0.9986772486772487,
+            "support": 756.0
+        },
+        "Changes": {
+            "precision": 0.9948293691830403,
+            "recall": 0.9927760577915377,
+            "f1-score": 0.993801652892562,
+            "support": 969.0
+        },
+        "accuracy": 0.9967227130236535,
+        "macro avg": {
+            "precision": 0.9970689300006548,
+            "recall": 0.9969124335272105,
+            "f1-score": 0.9969893500120368,
+            "support": 7018.0
+        },
+        "weighted avg": {
+            "precision": 0.9967263623367699,
+            "recall": 0.9967227130236535,
+            "f1-score": 0.9967231945610948,
+            "support": 7018.0
+        }
+    }
+}

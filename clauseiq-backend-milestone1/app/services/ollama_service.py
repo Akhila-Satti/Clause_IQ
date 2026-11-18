@@ -8,12 +8,13 @@ OLLAMA_MODEL = settings.OLLAMA_MODEL
 OLLAMA_TIMEOUT = settings.OLLAMA_TIMEOUT
 
 
+
 def generate_response(
     prompt: str,
     temperature: float = 0.2,
 ) -> str:
     """
-    Generate a text response using the locally running Ollama model.
+    Generate a final user-facing response using Ollama.
     """
 
     if not prompt or not prompt.strip():
@@ -24,30 +25,31 @@ def generate_response(
         "messages": [
             {
                 "role": "user",
-                "content": prompt,
+                "content": "/no_think\n\n" + prompt,
             }
         ],
         "stream": False,
         "think": False,
         "options": {
             "temperature": temperature,
-            "num_ctx": 2048,
-            "num_predict": 128,
+            "num_ctx": 4096,
+            "num_predict": 600,
             "num_thread": 4,
         },
     }
+
     try:
         response = requests.post(
             OLLAMA_URL,
             json=payload,
             timeout=OLLAMA_TIMEOUT,
         )
-
         response.raise_for_status()
 
     except requests.RequestException as exc:
         raise RuntimeError(
-            f"Could not connect to Ollama at {settings.OLLAMA_URL}: {exc}"
+            f"Could not connect to Ollama at "
+            f"{settings.OLLAMA_URL}: {exc}"
         ) from exc
 
     try:
@@ -58,14 +60,17 @@ def generate_response(
         ) from exc
 
     message = data.get("message", {})
+
+    # Use the final response, not the separate thinking field.
     answer = message.get("content", "")
 
-    if not answer:
+    if not answer or not answer.strip():
         raise ValueError(
             "Ollama returned an empty response."
         )
 
     return answer.strip()
+
 
 
 def generate_json_response(

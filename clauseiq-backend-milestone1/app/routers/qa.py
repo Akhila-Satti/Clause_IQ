@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,10 @@ from app.routers.auth import get_current_user
 from app.schemas.question import (
     AskQuestionRequest,
     AskQuestionResponse,
+)
+
+from app.services.personalization_service import (
+    build_personalization_context,
 )
 
 from app.services.qa_service import ask_agreement
@@ -34,18 +39,19 @@ def ask_question(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    document = db.get(
-        Document,
-        document_id,
-    )
+    print("\n========== ASK AGREEMENT ==========", flush=True)
+    print("Endpoint reached", flush=True)
+    print("Authenticated User ID:", user.id, flush=True)
+
+    document = db.get(Document, document_id)
 
     if not document:
         raise HTTPException(
             status_code=404,
-            detail="Document not found",
+            detail="Document not found.",
         )
 
-    # Make sure the document belongs to the logged-in user.
+    # Verify document ownership.
     if document.user_id != user.id:
         raise HTTPException(
             status_code=403,
@@ -68,35 +74,74 @@ def ask_question(
             detail="No analyzed clauses found for this document.",
         )
 
-    relevant_clauses = retrieve_relevant_clauses(
-        db=db,
-        question=question,
-        document_id=document_id,
-        top_k=3,
-    )
-
-    if not relevant_clauses:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "No relevant clauses were found "
-                "for this question."
-            ),
+    # Retrieve relevant agreement clauses.
+    try:
+        relevant_clauses = retrieve_relevant_clauses(
+            db=db,
+            question=question,
+            document_id=document_id,
+            top_k=3,
         )
 
-    try:
+        if not relevant_clauses:
+            raise HTTPException(
+                status_code=404,
+                detail="No relevant clauses were found for this question.",
+            )
+
+        # =====================================
+        # PERSONALIZATION CONTEXT
+        # =====================================
+
+        print("\n========== PERSONALIZATION DEBUG ==========", flush=True)
+
+        print("USER ID:", user.id, flush=True)
+        print("CONSENT:", user.personalization_consent, flush=True)
+        print("AGE:", user.age, flush=True)
+        print("OCCUPATION:", user.occupation, flush=True)
+        print("INCOME:", user.income, flush=True)
+        print("LOCATION:", user.location, flush=True)
+
+        personalization_context = build_personalization_context(user)
+
+        print(
+            "GENERATED CONTEXT:",
+            repr(personalization_context),
+            flush=True,
+        )
+
+        print("CONTEXT GENERATED:", bool(personalization_context), flush=True)
+
+        print("============================================\n", flush=True)
+
+        # =====================================
+        # SEND CONTEXT TO LLM
+        # =====================================
+
+        print("Sending question and personalization to QA service...", flush=True)
+
         answer = ask_agreement(
             question=question,
             clauses=relevant_clauses,
+            personalization_context=personalization_context,
         )
 
+        if not answer or not answer.strip():
+            raise ValueError("AI returned an empty answer.")
+
+        print("AI answer generated successfully.", flush=True)
+        print("====================================\n", flush=True)
+
+    except HTTPException:
+        raise
+
     except Exception as exc:
+        print("ASK AGREEMENT ERROR:", repr(exc), flush=True)
+
         raise HTTPException(
             status_code=502,
-            detail=(
-                f"Agreement question answering failed: {exc}"
-            ),
-        )
+            detail=f"Agreement question answering failed: {exc}",
+        ) from exc
 
     return {
         "question": question,
@@ -123,18 +168,14 @@ def retrieve_clauses(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    document = db.get(
-        Document,
-        document_id,
-    )
+    document = db.get(Document, document_id)
 
     if not document:
         raise HTTPException(
             status_code=404,
-            detail="Document not found",
+            detail="Document not found.",
         )
 
-    # Make sure the document belongs to the logged-in user.
     if document.user_id != user.id:
         raise HTTPException(
             status_code=403,
